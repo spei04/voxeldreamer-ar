@@ -2,7 +2,17 @@
 
 > **Fork of [karpathy/autoresearch](https://github.com/karpathy/autoresearch)** repurposed for frontier research on **tokenized autoregressive world models** for Minecraft, with 3D-structured tokenization.
 >
-> 👉 **Start here: [RESEARCH.md](./RESEARCH.md)** — thesis, experimental program, evaluation, and roadmap.
+> ### Start here
+> - 📐 [RESEARCH.md](./RESEARCH.md) — thesis, experimental program, eval, roadmap
+> - 📚 [RESEARCH-LITERATURE.md](./RESEARCH-LITERATURE.md) — prior work survey positioning this contribution against MineWorld, Genie 3, Oasis, etc.
+> - 🗂️ [voxeldreamer/INDEX.md](./voxeldreamer/INDEX.md) — file index for all code, docs, tests
+> - 🛠️ [voxeldreamer/PHASE2.md](./voxeldreamer/PHASE2.md) — week-by-week execution plan for the Minecraft data + train.py integration phase
+>
+> ### Run the CPU tests
+> ```bash
+> python3 voxeldreamer/tests/run_all.py
+> ```
+> 42 tests across positional encodings, tokenizers, attention masks, the data pipeline, and the eval harness.
 >
 > Below is the original autoresearch README, kept intact for reference. Phase 1 of the roadmap validates the upstream loop unmodified; Phases 2–3 layer in the Minecraft data pipeline and VoxelDreamer-specific experimental axes.
 
