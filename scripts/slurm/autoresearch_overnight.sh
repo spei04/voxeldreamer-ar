@@ -1,76 +1,71 @@
-#!/bin/bash
+#!/usr/bin/env bash
+#SBATCH -o /data/vision/beery/scratch/serena/slurm_job/logs/%j.log
 #SBATCH --job-name=vd-overnight
-#SBATCH --output=scripts/slurm/logs/%x-%j.out
-#SBATCH --error=scripts/slurm/logs/%x-%j.err
-#SBATCH --time=12:00:00
-#SBATCH --nodes=1
-#SBATCH --ntasks-per-node=1
+#SBATCH --mem=60GB
+#SBATCH --time=36:00:00
+#SBATCH --partition=vision-beery
+#SBATCH --qos=vision-beery-main
+#SBATCH --account=vision-beery
+#SBATCH --gres=gpu:a100:1
 #SBATCH --cpus-per-task=16
-#SBATCH --mem=128G
-#SBATCH --gres=gpu:1
-# ----- CLUSTER-SPECIFIC ---------------------------------------------------
-# #SBATCH --partition=gpu
-# #SBATCH --account=YOUR_ACCOUNT
-# #SBATCH --constraint=h100
-# --------------------------------------------------------------------------
 #
-# Overnight autoresearch loop driven by an AI agent CLI (Claude Code or Codex).
+# Long-running experiment loop. Three modes inline — uncomment ONE.
 #
-# REQUIREMENTS for this script to actually drive a research loop:
-#   1. The agent CLI must be installed on the cluster. Options:
-#        - Claude Code:  https://docs.claude.com/en/docs/claude-code
-#                        npm install -g @anthropic-ai/claude-code
-#        - Codex CLI:    https://github.com/openai/codex
-#   2. Outbound HTTPS to the model provider must be allowed from compute
-#      nodes. Many HPC clusters BLOCK this — check first by running
-#      `curl -v https://api.anthropic.com/` from an interactive session.
-#   3. An API key in the environment (ANTHROPIC_API_KEY or OPENAI_API_KEY).
-#      Pass through sbatch with `--export=ALL,ANTHROPIC_API_KEY=$ANTHROPIC_API_KEY`.
+# Mode A (recommended): Claude Code CLI drives the loop. Requires
+#   `claude` CLI installed AND outbound HTTPS to api.anthropic.com.
+# Mode B: Codex CLI drives the loop. Requires `codex` CLI + OpenAI HTTPS.
+# Mode C: deterministic baseline loop (no LLM). Just runs train.py many
+#   times unchanged. Useful if outbound HTTPS is blocked on compute nodes.
 #
-# If your cluster blocks outbound HTTPS, see `interactive_agent.md` for the
-# alternate workflow: run the agent on a login node and submit per-experiment
-# `train_once.sh` jobs from there.
+# To test outbound HTTPS from a compute node before relying on Mode A/B,
+# request an interactive session and run:
+#   srun --partition=vision-beery --qos=vision-beery-main --account=vision-beery --pty bash
+#   curl -v https://api.anthropic.com/
+# If that fails, you're stuck on Mode C OR the alternate workflow in
+# interactive_agent.md (agent on login node, sbatch per experiment).
+#
+#   sbatch scripts/slurm/autoresearch_overnight.sh
 
 source scripts/slurm/_common.sh
 
-# Branch convention from program.md: each overnight session gets its own branch.
 TAG="vd-$(date +%Y%m%d-%H%M)"
 BRANCH="autoresearch/$TAG"
 echo "[overnight] creating branch $BRANCH"
 git checkout -b "$BRANCH"
 
-# Initialize results.tsv if absent (autoresearch convention — not git-tracked).
 if [ ! -f results.tsv ]; then
     printf "commit\tval_bpb\tmemory_gb\tstatus\tdescription\n" > results.tsv
 fi
 
-# --- Pick which agent CLI to drive the loop ------------------------------
-# Uncomment the block that matches what you installed.
-
-# OPTION A: Claude Code CLI
+# --- MODE A: Claude Code CLI ---------------------------------------------
+# Pass through the API key with --export when submitting:
+#   sbatch --export=ALL,ANTHROPIC_API_KEY=$ANTHROPIC_API_KEY scripts/slurm/autoresearch_overnight.sh
+#
 # echo "[overnight] launching claude-code agent ..."
 # claude --print --permission-mode bypassPermissions \
-#     "Read program.md and run the experiment loop indefinitely." \
-#     2>&1 | tee scripts/slurm/logs/agent-$SLURM_JOB_ID.log
+#     "Read program.md and run the experiment loop indefinitely. Never stop."
 
-# OPTION B: Codex CLI
+# --- MODE B: Codex CLI ----------------------------------------------------
 # echo "[overnight] launching codex agent ..."
-# codex exec "Read program.md and run the experiment loop indefinitely." \
-#     2>&1 | tee scripts/slurm/logs/agent-$SLURM_JOB_ID.log
+# codex exec "Read program.md and run the experiment loop indefinitely."
 
-# OPTION C: fallback — no agent installed, just run the baseline N times so
-# the job doesn't waste GPU. Replace with one of the above as soon as the
-# agent CLI is available on the cluster.
-echo "[overnight] no agent configured — running baseline 100 times as a sanity check."
-echo "[overnight] EDIT THIS SCRIPT to enable the agent CLI."
-for i in $(seq 1 100); do
-    echo "[overnight] iteration $i / 100 at $(date -Iseconds)"
+# --- MODE C (default): deterministic baseline loop -----------------------
+# Runs train.py unchanged N times. Establishes seed-variance on val_bpb so
+# you know what counts as a "real" improvement when sweeping. Replace with
+# Mode A or B once an agent CLI is available.
+echo "[overnight] MODE C: running unchanged baseline 30 times for seed variance."
+echo "[overnight] EDIT THIS SCRIPT to switch to Mode A/B once agent is set up."
+
+for i in $(seq 1 30); do
+    echo "[overnight] === iteration $i / 30 at $(date -Iseconds) ==="
     uv run train.py > run.log 2>&1 || true
     VAL_BPB=$(grep "^val_bpb:" run.log | awk '{print $2}')
     PEAK_VRAM=$(grep "^peak_vram_mb:" run.log | awk '{print $2}')
-    MEMORY_GB=$(python3 -c "print(f'{${PEAK_VRAM:-0}/1024:.1f}')" 2>/dev/null || echo "0.0")
+    MEMORY_GB=$(python -c "print(f'{${PEAK_VRAM:-0}/1024:.1f}')" 2>/dev/null || echo "0.0")
     COMMIT=$(git rev-parse --short HEAD)
-    printf "%s\t%s\t%s\tkeep\tbaseline iter %d\n" "$COMMIT" "$VAL_BPB" "$MEMORY_GB" "$i" >> results.tsv
+    printf "%s\t%s\t%s\tkeep\tbaseline iter %d\n" \
+        "$COMMIT" "${VAL_BPB:-NA}" "$MEMORY_GB" "$i" >> results.tsv
+    echo "[overnight] iter $i: val_bpb=$VAL_BPB"
 done
 
 echo "[overnight] done at $(date -Iseconds)"

@@ -1,23 +1,20 @@
-#!/bin/bash
+#!/usr/bin/env bash
+#SBATCH -o /data/vision/beery/scratch/serena/slurm_job/logs/%j.log
 #SBATCH --job-name=vd-prepare
-#SBATCH --output=scripts/slurm/logs/%x-%j.out
-#SBATCH --error=scripts/slurm/logs/%x-%j.err
-#SBATCH --time=00:30:00
-#SBATCH --nodes=1
-#SBATCH --ntasks-per-node=1
-#SBATCH --cpus-per-task=8
-#SBATCH --mem=32G
-# ----- CLUSTER-SPECIFIC: uncomment + edit ---------------------------------
-# #SBATCH --partition=cpu
-# #SBATCH --account=YOUR_ACCOUNT
-# #SBATCH --qos=normal
-# --------------------------------------------------------------------------
+#SBATCH --mem=60GB
+#SBATCH --time=02:00:00
+#SBATCH --partition=vision-beery
+#SBATCH --qos=vision-beery-main
+#SBATCH --account=vision-beery
+#SBATCH --cpus-per-task=16
 #
 # One-time data preparation for upstream autoresearch.
 # Downloads ~10 training shards + the validation shard, trains the BPE
 # tokenizer. Cached at ~/.cache/autoresearch/.
 #
-# Run once before train.sh. Re-run only if you want different shard counts.
+# No GPU needed for this step. Run once before any training.
+#
+#   sbatch scripts/slurm/prepare.sh
 
 source scripts/slurm/_common.sh
 

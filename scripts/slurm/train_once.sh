@@ -1,27 +1,24 @@
-#!/bin/bash
+#!/usr/bin/env bash
+#SBATCH -o /data/vision/beery/scratch/serena/slurm_job/logs/%j.log
 #SBATCH --job-name=vd-train
-#SBATCH --output=scripts/slurm/logs/%x-%j.out
-#SBATCH --error=scripts/slurm/logs/%x-%j.err
-#SBATCH --time=00:30:00
-#SBATCH --nodes=1
-#SBATCH --ntasks-per-node=1
-#SBATCH --cpus-per-task=8
-#SBATCH --mem=64G
-#SBATCH --gres=gpu:1
-# ----- CLUSTER-SPECIFIC ---------------------------------------------------
-# #SBATCH --partition=gpu
-# #SBATCH --account=YOUR_ACCOUNT
-# #SBATCH --constraint=h100        # or a100, l40s, etc.
-# --------------------------------------------------------------------------
+#SBATCH --mem=60GB
+#SBATCH --time=01:00:00
+#SBATCH --partition=vision-beery
+#SBATCH --qos=vision-beery-main
+#SBATCH --account=vision-beery
+#SBATCH --gres=gpu:a100:1
+#SBATCH --cpus-per-task=16
 #
-# Single training experiment. Runs train.py once with whatever is committed
-# right now. ~5 minutes training + ~1 minute startup/compilation.
+# Single autoresearch training experiment. Runs train.py once with whatever
+# is committed right now. ~5 minutes of training + ~1 minute startup.
 #
-# Logs everything to scripts/slurm/logs/<jobname>-<jobid>.out — the
-# autoresearch summary block (val_bpb, peak_vram_mb, etc.) is at the end.
+# A100 NOTE: upstream autoresearch was tuned for H100. On 40GB A100 you may
+# need to lower DEPTH in train.py (8 -> 6 or 4) to avoid OOM. On 80GB A100
+# the defaults should fit.
 #
-# Use this for: Phase 1 baseline validation, single ad-hoc experiments,
-# B0/B1 baseline runs at the start of Phase 2 W4.
+#   sbatch scripts/slurm/train_once.sh
+#   # with a description appended to results.tsv:
+#   sbatch --export=ALL,VD_DESC="baseline" scripts/slurm/train_once.sh
 
 source scripts/slurm/_common.sh
 
@@ -30,7 +27,6 @@ echo "[train] starting at $(date -Iseconds)"
 echo "[train] commit: $COMMIT"
 echo "[train] branch: $(git rev-parse --abbrev-ref HEAD)"
 
-# run.log is what upstream's program.md expects to grep for val_bpb.
 uv run train.py > run.log 2>&1
 RET=$?
 
@@ -40,18 +36,16 @@ tail -n 25 run.log
 echo "[train] ====================="
 
 if [ $RET -ne 0 ]; then
-    echo "[train] FAILED. Full stderr in scripts/slurm/logs/%x-%j.err"
+    echo "[train] FAILED — see run.log for the Python traceback."
     exit $RET
 fi
 
-# Extract metrics for results.tsv (autoresearch convention)
 VAL_BPB=$(grep "^val_bpb:" run.log | awk '{print $2}')
 PEAK_VRAM=$(grep "^peak_vram_mb:" run.log | awk '{print $2}')
-MEMORY_GB=$(python3 -c "print(f'{${PEAK_VRAM:-0}/1024:.1f}')" 2>/dev/null || echo "0.0")
+MEMORY_GB=$(python -c "print(f'{${PEAK_VRAM:-0}/1024:.1f}')" 2>/dev/null || echo "0.0")
 
 echo "[train] val_bpb=$VAL_BPB  memory_gb=$MEMORY_GB"
 
-# Append to results.tsv if it exists (autoresearch convention — not git-tracked)
 if [ -f results.tsv ]; then
     DESC="${VD_DESC:-single sbatch run}"
     printf "%s\t%s\t%s\tkeep\t%s\n" "$COMMIT" "$VAL_BPB" "$MEMORY_GB" "$DESC" >> results.tsv

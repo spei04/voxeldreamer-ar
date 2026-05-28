@@ -22,9 +22,12 @@ dev/
 # Results file
 results.tsv
 
-# Slurm runtime logs (the dir is kept via .gitkeep)
+# Slurm runtime logs (logs go to user's scratch dir on cluster)
 scripts/slurm/logs/*
 !scripts/slurm/logs/.gitkeep
 
 # run.log from train.py invocations
 run.log
+
+# Local uv venv (created by uv sync)
+.venv/

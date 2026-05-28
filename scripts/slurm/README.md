@@ -1,21 +1,32 @@
 # Slurm scripts for VoxelDreamer-AR
 
-`sbatch`-ready scripts for submitting jobs to a Slurm-managed GPU cluster.
+`sbatch`-ready scripts for the Beery vision cluster (vision-beery partition,
+A100 GPUs, conda env `bpp`).
 
-## Before first use — cluster-specific edits
+## Already configured for your cluster
 
-Open each `*.sh` script and uncomment / edit the lines under
-`# ----- CLUSTER-SPECIFIC --------` near the top. The common ones:
+All SBATCH directives are filled in:
 
 ```bash
-#SBATCH --partition=gpu          # name your cluster uses (gpu, h100, a100, dgx, ...)
-#SBATCH --account=YOUR_ACCOUNT   # mandatory on many clusters
-#SBATCH --qos=normal             # some clusters require this
-#SBATCH --constraint=h100        # GPU type if you want to pin one
+#SBATCH -o /data/vision/beery/scratch/serena/slurm_job/logs/%j.log
+#SBATCH --partition=vision-beery
+#SBATCH --qos=vision-beery-main
+#SBATCH --account=vision-beery
+#SBATCH --gres=gpu:a100:1                  # GPU jobs only
+#SBATCH --cpus-per-task=16
 ```
 
-Also edit `_common.sh` to enable the right `module load` lines for your
-site (Python and CUDA versions).
+`_common.sh` sources `/data/vision/beery/scratch/serena/.bashrc`, activates
+the `bpp` conda env, then ensures `uv` is installed (autoresearch's project
+manager). `uv` and conda coexist cleanly — conda gives us a Python interpreter
+and base scientific stack, `uv` manages the autoresearch-specific deps in `.venv`.
+
+## A100 note
+
+Upstream autoresearch was tuned for H100. On 40GB A100 you may need to lower
+`DEPTH` in `train.py` (default 8 → 6 or 4) to avoid OOM. On 80GB A100 the
+defaults should fit. Watch the first `train_once.sh` run for `peak_vram_mb:`
+in the log — if it's >38000 on a 40GB card, drop DEPTH and re-run.
 
 ## Scripts (in the order you'd run them)
 
@@ -33,26 +44,32 @@ login-node-driven workflow.
 ## Typical first session
 
 ```bash
+# On the cluster (login node)
+cd /data/vision/beery/scratch/serena
 git clone https://github.com/spei04/voxeldreamer-ar.git
 cd voxeldreamer-ar
 
-# 1. Edit the SBATCH headers in each script for your cluster
-# 2. Smoke test (CPU, ~2 min)
+# 1. CPU sanity check (~2 min)
 sbatch scripts/slurm/smoke_cpu.sh
 squeue -u $USER
 
-# 3. One-time data prep (CPU, ~2 min)
+# 2. One-time data prep (~2 min wallclock + queue time)
 sbatch scripts/slurm/prepare.sh
 
-# 4. Phase 1 baseline: one training run
+# 3. Phase 1 baseline: one training run
 sbatch scripts/slurm/train_once.sh
-# Wait, then look at scripts/slurm/logs/vd-train-<jobid>.out for val_bpb
+# Look at /data/vision/beery/scratch/serena/slurm_job/logs/<jobid>.log for val_bpb
 ```
 
 ## Logs
 
-All scripts write stdout/stderr to `scripts/slurm/logs/<jobname>-<jobid>.{out,err}`.
-The directory is gitignored — those logs are local to your cluster checkout.
+All scripts write to `/data/vision/beery/scratch/serena/slurm_job/logs/%j.log`
+(your existing convention). Quick tail:
+
+```bash
+ls -t /data/vision/beery/scratch/serena/slurm_job/logs/ | head -5
+tail -f /data/vision/beery/scratch/serena/slurm_job/logs/<jobid>.log
+```
 
 ## Monitoring
 
