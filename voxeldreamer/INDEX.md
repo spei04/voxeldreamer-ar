@@ -7,6 +7,7 @@ Quick navigation for collaborators and future-you.
 - [`../RESEARCH.md`](../RESEARCH.md) — thesis, experimental program, evals, 3-phase roadmap.
 - [`../RESEARCH-LITERATURE.md`](../RESEARCH-LITERATURE.md) — prior work survey positioning this contribution.
 - [`PHASE2.md`](PHASE2.md) — week-by-week execution plan for Phase 2 (Minecraft data + train.py integration).
+- [`INTEGRATION-train-py.md`](INTEGRATION-train-py.md) — exact patch needed to migrate upstream `train.py` to VoxelDreamer-AR (3D-RoPE, position-aware data, loop-closure eval).
 - [`program-voxeldreamer.md`](program-voxeldreamer.md) — autoresearch-agent instruction file. **Use only after Phase 2 is complete.**
 - [`data/README.md`](data/README.md) — token-budget math, data source trade-offs, shard format.
 
@@ -38,6 +39,9 @@ Quick navigation for collaborators and future-you.
 ### `tests/`
 - [`run_all.py`](tests/run_all.py) — runs every `test_*.py` as a subprocess. **`python3 voxeldreamer/tests/run_all.py`**
 - 42 tests passing across 6 test files.
+
+### End-to-end CPU smoke test
+- [`smoke_train.py`](smoke_train.py) — tiny GPT + 3D-RoPE + synthetic data + 10 training steps + eval. Run with **`python3 voxeldreamer/smoke_train.py`**. Proves the full integration shape works before any H100 time is spent.
 
 ## Phase status (updated 2026-05-27)
 
