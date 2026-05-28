@@ -35,5 +35,8 @@ echo "[setup] hostname: $(hostname)"
 echo "[setup] python:   $(which python)  -> $(python --version)"
 echo "[setup] CUDA_VISIBLE_DEVICES: ${CUDA_VISIBLE_DEVICES:-<unset>}"
 if command -v nvidia-smi >/dev/null 2>&1; then
-    nvidia-smi --query-gpu=name,memory.total --format=csv,noheader
+    # nvidia-smi exits non-zero on CPU-only jobs ("No devices were found").
+    # The `|| true` keeps `set -e` from killing the script — we only want
+    # the GPU report as informational output.
+    nvidia-smi --query-gpu=name,memory.total --format=csv,noheader || true
 fi
