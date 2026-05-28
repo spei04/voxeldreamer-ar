@@ -46,8 +46,12 @@ fi
 #     "Read program.md and run the experiment loop indefinitely. Never stop."
 
 # --- MODE B: Codex CLI ----------------------------------------------------
+# Install: see scripts/slurm/install_codex.md.
+# Submit with the API key passed through:
+#   sbatch --export=ALL,OPENAI_API_KEY=$OPENAI_API_KEY scripts/slurm/autoresearch_overnight.sh
+#
 # echo "[overnight] launching codex agent ..."
-# codex exec "Read program.md and run the experiment loop indefinitely."
+# codex exec "Read program.md and run the experiment loop indefinitely. Never stop."
 
 # --- MODE C (default): deterministic baseline loop -----------------------
 # Runs train.py unchanged N times. Establishes seed-variance on val_bpb so

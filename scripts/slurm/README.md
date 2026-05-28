@@ -41,6 +41,9 @@ For HPC clusters that block outbound HTTPS on compute nodes, see
 [`interactive_agent.md`](interactive_agent.md) for the alternate
 login-node-driven workflow.
 
+To install the Codex CLI for agent-driven overnight runs (Mode B in
+`autoresearch_overnight.sh`), see [`install_codex.md`](install_codex.md).
+
 ## Typical first session
 
 ```bash
