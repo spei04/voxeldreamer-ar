@@ -21,3 +21,10 @@ dev/
 
 # Results file
 results.tsv
+
+# Slurm runtime logs (the dir is kept via .gitkeep)
+scripts/slurm/logs/*
+!scripts/slurm/logs/.gitkeep
+
+# run.log from train.py invocations
+run.log
