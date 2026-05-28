@@ -1,4 +1,14 @@
-# autoresearch
+# VoxelDreamer-AR
+
+> **Fork of [karpathy/autoresearch](https://github.com/karpathy/autoresearch)** repurposed for frontier research on **tokenized autoregressive world models** for Minecraft, with 3D-structured tokenization.
+>
+> 👉 **Start here: [RESEARCH.md](./RESEARCH.md)** — thesis, experimental program, evaluation, and roadmap.
+>
+> Below is the original autoresearch README, kept intact for reference. Phase 1 of the roadmap validates the upstream loop unmodified; Phases 2–3 layer in the Minecraft data pipeline and VoxelDreamer-specific experimental axes.
+
+---
+
+# autoresearch *(upstream)*
 
 ![teaser](progress.png)
 
